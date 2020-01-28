@@ -56,19 +56,19 @@ ur2 = 1.0
 ni  = np.sqrt(er1) # refrctive index of incidence media
 
 # source
-lam0_nm  = np.linspace(1530, 1575) #free space wavelength 
-lam0_m = [i*1e-9 for i in lam0_nm]
-k0    = [(2*np.pi)/i for i in lam0_m]
-theta = 0 * degrees #elevation angle 
-phi   = 0 * degrees #azimuthal angle 
-pte   = 1/np.sqrt(2)
-ptm   = complex(0, pte)
+lam0_nm  = np.linspace(1530, 1575, 5) #free space wavelength 
+lam0_m   = [i*1e-9 for i in lam0_nm]
+k0       = [(2*np.pi)/i for i in lam0_m]
+theta    = 0 * degrees #elevation angle 
+phi      = 0 * degrees #azimuthal angle 
+pte      = 1/np.sqrt(2)
+ptm      = complex(0, pte)
 
 # TMM algorithm
 # Transverse Wave Vectors
 kx = 0#[i*ni for i in k0]
 ky = 0#[i*ni for i in k0]
-kz = np.sqrt((k0**2)*ni-(kx**2)-(ky**2))
+kz = [np.sqrt((i**2)*ni-(kx**2)-(ky**2)) for i in k0]
 
 
 # ni li??
@@ -76,29 +76,29 @@ kz = np.sqrt((k0**2)*ni-(kx**2)-(ky**2))
 Wh = I
 # Qh = [kx*ky 1-kx*kx; ky*ky-1 -kx*ky] # Q
 Qh = np.array([[kx*ky, 1-(kx**2)], [(ky**2)-1,  -kx*ky]])
-Omh = complex(0, kz)*Wh # Omega
-Vh = np.dot(Qh, np.linalg.inv(Omh))
+Omh = [complex(0, i)*Wh  for i in kz]# Omega
+Vh = [np.dot(Qh, np.linalg.inv(i)) for i in Omh]
 
 # initialaze Global Scattering Matrix
-Sg11 = np.zeros(shape = (2, 2)) 
-Sg12 = I
-Sg21 = I
-Sg22 = np.zeros(shape = (2, 2))
+Sg11 = np.tile(np.zeros(shape = (2, 2)), len(lam0_m)) 
+Sg12 = np.tile(I, (1, len(lam0_m)))
+Sg21 = np.tile(I, len(lam0_m))
+Sg22 = np.tile(np.zeros(shape = (2, 2)), len(lam0_m)) 
 
 ## reflection side
 krz = np.sqrt(ur1*er1 - (kx**2) - (ky**2)) 
 Qr = 1/ur1 * np.array([[kx*ky, ur1*er1-kx**2], [ky**2-ur1*er1, -kx*ky]]) 
 Omr = ni*krz*I
 Vr = np.dot(Qr, np.linalg.inv(Omr)) 
-Ar = I + np.dot(np.linalg.inv(i), j) for i,j in zip(Vh, Vr)] #!!!!!!!!!!!! check out this place later
-Br = [I - np.dot(np.linalg.inv(i), j) for i,j in zip(Vh, Vr)] 
+Ar   = [I + np.dot(np.linalg.inv(i), Vr) for i in Vh] #!!!!!!!!!!!! check out this place later
+Br   = [I - np.dot(np.linalg.inv(i), Vr) for i in Vh]  
 Sr11 = [np.dot(np.linalg.inv(-1*i), j) for i,j in zip(Ar, Br)]
 Sr12 = [2 * np.linalg.inv(i) for i in Ar]
-Sr21 = [0.5 * (i - np.linalg.multi_dot([j, np.linalg.inv(i),  j])) for i,j in zip(Ar, Br)]
+Sr21 = [0.5 * (i - np.linalg.multi_dot([j, np.linalg.inv(i),  j])) for i,j in zip(Ar, Br)] 
 Sr22 = [np.dot(j, np.linalg.inv(i)) for i,j in zip(Ar, Br)]
 
-print(Sr11[1])
-
+print(I)
+print(Sg12)
 # connect external reflection region to device
 for i in range(len(lam0_m)):
     Sg11[i], Sg12[i], Sg21[i], Sg22[i] = redhefferstar(Sr11[i], Sr12[i], Sr21[i], Sr22[i], Sg11[i], Sg12[i], Sg21[i], Sg22[i])
