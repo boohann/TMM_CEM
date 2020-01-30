@@ -28,17 +28,17 @@ def redhefferstar(SA11, SA12, SA21, SA22, SB11, SB12, SB21, SB22):
 # Units 
 I = np.identity(2)
 degrees = np.pi/180
-lam0_nm  = np.linspace(1200, 1600, 1000)       # Free space wavelength 
+lam0_nm  = np.linspace(1550, 1600, 1000)       # Free space wavelength 
 lam0_m   = [i*1e-9 for i in lam0_nm]
 
 ### Device parameters ###
 n1 = 3
-n2 = 4
+n2 = 4.1
 u1 = 1
 u2 = 2
 L1 = 7.87
 L2 = 1.1
-repeats = 3                             # Number of repeats
+repeats = 10                             # Number of repeats
 N_l = 2                                 # Number of layers per repeat
 N  = repeats*N_l                        # Total number of layers
 
@@ -78,7 +78,7 @@ for j in range(len(lam0_m)):
     Wh = I
     # Qh = [kx*ky 1-kx*kx; ky*ky-1 -kx*ky] # Q
     Qh = np.array([[kx*ky, 1-(kx**2)], [(ky**2)-1,  -kx*ky]])
-    Omh = complex(0, kz)*Wh  # Omega
+    Omh = complex(0, kz)*Wh                                     # Omega
     Vh = np.dot(Qh, np.linalg.inv(Omh))
 
     #####################
@@ -95,14 +95,15 @@ for j in range(len(lam0_m)):
 
     ### Reflection side ###
     krz  = np.sqrt(ur1*er1 - (kx**2) - (ky**2)) 
+    Pr   = 1/er1 * np.array([[kx*ky, ur1*er1-kx**2], [ky**2-ur1*er1, -kx*ky]]) 
     Qr   = 1/ur1 * np.array([[kx*ky, ur1*er1-kx**2], [ky**2-ur1*er1, -kx*ky]]) 
     Omr  = ni*krz*I
     Vr   = np.dot(Qr, np.linalg.inv(Omr)) 
     Ar   = I + np.dot(np.linalg.inv(Vh), Vr)  #!!!!!!!!!!!! check out this place later
     Br   = I - np.dot(np.linalg.inv(Vh), Vr)  
-    Sr11 = np.dot(np.linalg.inv(-1*Ar), Br)
+    Sr11 = -1*np.dot(np.linalg.inv(Ar), Br)
     Sr12 = 2 * np.linalg.inv(Ar) 
-    Sr21 = 0.5 * (Ar - np.linalg.multi_dot([Br, np.linalg.inv(Ar),  Br]))
+    Sr21 = 0.5 * Wh*(Ar - np.linalg.multi_dot([Br, np.linalg.inv(Ar),  Br]))
     Sr22 = np.dot(Br, np.linalg.inv(Ar)) 
 
     ### Connect external reflection region to device ###
@@ -111,41 +112,45 @@ for j in range(len(lam0_m)):
 
     ### Reflection + each layer for every wavelength ###
     for i in range(N):
-        kz = np.sqrt(ER[i]*UR[i] - (kx**2) - (ky**2))
-        Q = 1/UR[i] * np.array([[kx*ky, UR[i]*ER[i]-kx**2], [ky**2-UR[i]*ER[i], -kx*ky]])
-        Om = ni*kz*I
-        V = np.dot(Q, np.linalg.inv(Om))
-        A = I + np.dot(np.linalg.inv(V), Vh)
-        B = I - np.dot(np.linalg.inv(V), Vh)
-        X = la.expm(Om*k0*Lm[i])
-        D = A - np.linalg.multi_dot([X, B, np.linalg.inv(A),X, B])
-        S11 = np.dot(np.linalg.inv(D), np.linalg.multi_dot([X, B, np.linalg.inv(A), X, A]) - B)
+        kz  = np.sqrt(ER[i]*UR[i] - (kx**2) - (ky**2))
+        Q   = (1/UR[i]) * np.array([[kx*ky, UR[i]*ER[i]-kx**2], [ky**2-UR[i]*ER[i], -kx*ky]])
+        Om  = complex(0, kz)*Wh#ni*kz*I
+        V   = np.dot(Q, np.linalg.inv(Om))
+        A   = I + np.dot(np.linalg.inv(V), Vh)
+        B   = I - np.dot(np.linalg.inv(V), Vh)
+        X   = la.expm(Om*k0*Lm[i])
+        C   = np.linalg.multi_dot([X, B, np.linalg.inv(A),X, B])
+        D   = np.linalg.multi_dot([X, np.matmul(B, np.linalg.inv(A)), X, B])
+        S11 = np.dot(np.linalg.inv(A - C), np.linalg.multi_dot([X, B, np.linalg.inv(A), X, A]) - B)
         S22 = S11
-        S12 = np.linalg.multi_dot([np.linalg.inv(D), X, A - np.linalg.multi_dot([B, np.linalg.inv(A), B])])
+        S12 = np.dot(np.dot(np.linalg.inv(A - D), X), A - np.linalg.multi_dot([B, np.linalg.inv(A), B]))
         S21 = S12
         ### Update gloabal S-matrix
         Sg11, Sg12, Sg21, Sg22 = redhefferstar(Sg11, Sg12, Sg21, Sg22, S11, S12, S21, S22)
-    
-    ### Now we add transmission ###
-    ktz = np.sqrt(ur2*er2 - (kx**2)-(ky**2))
-    Qt = 1/ur2 * np.array([[kx*ky, ur2*er2-(kx**2)], [(ky**2)-ur2*er2, -kx*ky]])
-    Omt = ni*ktz*I
-    Vt = np.dot(Qt, np.linalg.inv(Omt))
-    At = I + np.dot(np.linalg.inv(Vh), Vt)
-    Bt = I - np.dot(np.linalg.inv(Vh), Vt)
+        
+
+   ### Now we add transmission ###
+    ktz  = np.sqrt(ur2*er2 - (kx**2)-(ky**2))
+    Qt   = 1/ur2 * np.array([[kx*ky, ur2*er2-(kx**2)], [(ky**2)-ur2*er2, -kx*ky]])
+    Omt  = ni*ktz*I
+    Vt   = np.dot(Qt, np.linalg.inv(Omt))
+    At   = I + np.dot(np.linalg.inv(Vh), Vt)
+    Bt   = I - np.dot(np.linalg.inv(Vh), Vt)
     St11 = np.dot(Bt, np.linalg.inv(At))
-    St12 = 0.5*(At - np.linalg.multi_dot([Bt, np.linalg.inv(At), Bt]))
+    St12 = 0.5*Wh*(At - np.linalg.multi_dot([Bt, np.linalg.inv(At), Bt]))
     St21 = 2*np.linalg.inv(At)
     St22 = -1*np.dot(np.linalg.inv(At), Bt)
     
     Sf11, Sf12, Sf21, Sf22 = redhefferstar(Sg11, Sg12, Sg21, Sg22, St11, St12, St21, St22)
     ### Source ###
     Kinc = np.dot(k0*ni, np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)]))
+
     ncn = np.array([0, 0, -1]) # Surface normal
     aTE = np.array([0, 1, 0])
     
     
     aTM = np.cross(aTE, Kinc)/np.linalg.norm(np.cross(aTE, Kinc))
+   
     P = pte*aTE + ptm*aTM
     cinc = np.array([[P[0]], [P[1]]])
     
@@ -170,10 +175,16 @@ for j in range(len(lam0_m)):
     Tx.append(T)
     Rx.append(R)
 
-print(Rx)
 ### Plotting ###
-plt.plot(lam0_nm, Rx)
-plt.title('Bragg Grating')
-plt.xlabel('WL (nm)')
-plt.ylabel('Reflec')
+fig, ax1 = plt.subplots()
+
+ax2 = ax1.twinx()
+ax1.plot(lam0_nm, Rx, 'g-')
+ax2.plot(lam0_nm, Tx, 'b-')
+
+ax1.set_xlabel('WL (nm)')
+ax1.set_title('TMM Bragg Grating')
+ax1.set_ylabel('Ref', color='g')
+ax2.set_ylabel('Trans', color='b')
+
 plt.show()
