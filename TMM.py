@@ -28,17 +28,17 @@ def redhefferstar(SA11, SA12, SA21, SA22, SB11, SB12, SB21, SB22):
 # Units 
 I = np.identity(2)
 degrees = np.pi/180
-lam0_nm  = np.linspace(1550, 1600, 1000)       # Free space wavelength 
+lam0_nm  = np.linspace(1300, 1800, 500)       # Free space wavelength 
 lam0_m   = [i*1e-9 for i in lam0_nm]
 
 ### Device parameters ###
 n1 = 3
-n2 = 4.1
+n2 = 3.1
 u1 = 1
 u2 = 2
 L1 = 7.87
 L2 = 1.1
-repeats = 10                             # Number of repeats
+repeats = 20                             # Number of repeats
 N_l = 2                                 # Number of layers per repeat
 N  = repeats*N_l                        # Total number of layers
 
@@ -97,7 +97,7 @@ for j in range(len(lam0_m)):
     krz  = np.sqrt(ur1*er1 - (kx**2) - (ky**2)) 
     Pr   = 1/er1 * np.array([[kx*ky, ur1*er1-kx**2], [ky**2-ur1*er1, -kx*ky]]) 
     Qr   = 1/ur1 * np.array([[kx*ky, ur1*er1-kx**2], [ky**2-ur1*er1, -kx*ky]]) 
-    Omr  = ni*krz*I
+    Omr  = complex(0, krz)*Wh #Times n?
     Vr   = np.dot(Qr, np.linalg.inv(Omr)) 
     Ar   = I + np.dot(np.linalg.inv(Vh), Vr)  #!!!!!!!!!!!! check out this place later
     Br   = I - np.dot(np.linalg.inv(Vh), Vr)  
@@ -132,7 +132,7 @@ for j in range(len(lam0_m)):
    ### Now we add transmission ###
     ktz  = np.sqrt(ur2*er2 - (kx**2)-(ky**2))
     Qt   = 1/ur2 * np.array([[kx*ky, ur2*er2-(kx**2)], [(ky**2)-ur2*er2, -kx*ky]])
-    Omt  = ni*ktz*I
+    Omt  = complex(0, ktz)*I #Times n?
     Vt   = np.dot(Qt, np.linalg.inv(Omt))
     At   = I + np.dot(np.linalg.inv(Vh), Vt)
     Bt   = I - np.dot(np.linalg.inv(Vh), Vt)
@@ -185,6 +185,7 @@ ax2.plot(lam0_nm, Tx, 'b-')
 ax1.set_xlabel('WL (nm)')
 ax1.set_title('TMM Bragg Grating')
 ax1.set_ylabel('Ref', color='g')
+ax1.tick_params(axis='y', colors='g')
 ax2.set_ylabel('Trans', color='b')
-
+ax2.tick_params(axis='y', colors='b')
 plt.show()
