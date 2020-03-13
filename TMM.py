@@ -22,8 +22,8 @@ Zx = []
 
 ### Device parameters ###
 lambda_0 = 1.550310559006211    # Selected wavelength (um)
-n_rid = 1#3.12                    # Refractive index ridge
-n_del = 0#0.0075                    # Reflective index step
+n_rid = 3.12                    # Refractive index ridge
+n_del = 0.0075                  # Reflective index step
 n_def = n_rid-n_del             # Refractive index etched defect
 u_rid = 1                       # Magnetic perm layer 1
 u_def = 1                       # Magnetic perm layer 2
@@ -31,7 +31,7 @@ WL_start = 1550                 # Start WL (nm)
 WL_stop  = 1560                 # Stop WL (nm)
 sw = lambda_0/(4*n_def)         # Specify size of slot width
 cl = 400                        # Cavity length
-r_l = 0.99999                       # Left facet reflectivity
+r_l = 0.5                       # Left facet reflectivity
 r_r = 0.5                       # Right facet reflectivity
 u = 1.0                         # General magnetic permeability
 
