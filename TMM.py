@@ -21,28 +21,29 @@ Rx = []
 Zx = []
 
 ### Device parameters ###
-lambda_0 = 1.550310559006211    # Selected wavelength (um)
-n_rid = 3.12                    # Refractive index ridge
-n_del = 0.0075                  # Reflective index step
+lambda_0 = 1.5514510248727902   # Selected wavelength (um)
+n_rid = 3.2                     # Refractive index ridge
+n_del = 0.005                    # Reflective index step
 n_def = n_rid-n_del             # Refractive index etched defect
 u_rid = 1                       # Magnetic perm layer 1
 u_def = 1                       # Magnetic perm layer 2
-WL_start = 1550                 # Start WL (nm)
+WL_start = 1540                 # Start WL (nm)
 WL_stop  = 1560                 # Stop WL (nm)
-sw = lambda_0/(4*n_def)         # Specify size of slot width
+sw =  0.12125483598388827#lambda_0/(n_def*4)#1.1                        #lambda_0/(4*n_def)
 cl = 400                        # Cavity length
-r_l = 0.5                       # Left facet reflectivity
-r_r = 0.5                       # Right facet reflectivity
-u = 1.0                         # General magnetic permeability
+r_l = 0.524                     # Left facet reflectivity
+r_r = 0.671                     # Right facet reflectivity
 
 ### Calc to turn reflectivites to n ###
-n_l = (n_rid*(1-r_l))/(1+r_l) 
-n_r = (n_rid*(1-r_r))/(1+r_r)
+n_l = (n_rid*(1-r_l**2))/(1+r_l**2) 
+n_r = (n_rid*(1-r_r**2))/(1+r_r**2)
+
+
+print(np.sqrt((n_rid-n_r)/(n_rid+n_r)))
 
 ### Load slot positions from external calculation file ###
 L = np.load('Pslot.npy') 
-### Add right and left interface position to each slot ###
-Lr = [L[i]-L[i-1]-sw for i in range(1, len(L))]
+Lr = [L[i]-L[i-1]-sw/2 for i in range(1, len(L))]
 Lr.insert(0 , L[0]-sw/2)
 Ls = [sw for i in range(len(L))]
 Lm = [None]*(len(Lr)+len(Ls))
@@ -59,14 +60,15 @@ lam0_nm  = np.linspace(WL_start, WL_stop, 1000)     # Free space wavelength
 lam0_m   = [i*1e-9 for i in lam0_nm]
 
 ''' Test QW DFB stack
-uR = [ 1, 1]
+uR = [u_rid,u_def]
 eR = [ 1.69**2, 1.46**2]
 L  = [ 0.1479, 0.1712]
 ER = np.tile(eR, 15)                     # Array of permittivities in each layer  
 UR = np.tile(uR, 15)
 Lm = np.tile(L, 15)                     # Array of permeabilities in each layer
 '''
-U = [1, 1]
+
+U = [u_rid,u_def]
 E = [n_rid**2, n_def**2]
 ER = np.tile(E, len(L))                     # Array of permittivities in each layer  
 UR = np.tile(U, len(L))
@@ -78,9 +80,11 @@ r_E = np.array([n_r**2])
 r_H = np.array([1])                             
 
 ### Insert left & right facets & end section of laser ###
-Lm.insert(0,lambda_0/(2*n_def))             
+#Lm.insert(0,lambda_0/(4*n_l))             
+Lm.insert(0,0)
 Lm.append(cl-L[-1]-sw/2)
-Lm.append(lambda_0/(2*n_def))
+Lm.append(0)
+#Lm.append(lambda_0/(4*n_r))
 
 ### Append facets & laser end section onto dielectric stack ###
 # Laser end section
@@ -93,6 +97,7 @@ UR = np.append(UR, r_H)
 ER = np.insert(ER, 0, l_E)
 UR = np.insert(UR, 0, l_H)
 
+
 ### Generate input & output boudaries for laser [set to inf] ###
 erl = 1.0               # Left laser input
 url = 1.0
@@ -100,10 +105,9 @@ err = 1.0               # Right laser output
 urr = 1.0
 ni  = np.sqrt(erl)                  # Refrctive index of incidence media
 
-print(Lm)
+#print(Lm)
 print(ER)
 Lm = [i*1e-6 for i in Lm]           # Convert lengths to meters
-
 ### Source ###
 pte      = 1/np.sqrt(2)
 ptm      = pte*1j
@@ -135,7 +139,10 @@ for i in range(len(lam0_m)):
    
     k0 =(2*np.pi)/lam0_m[i] 
     kz = np.sqrt(1)                             #Apply refractive index of incident material
-
+    ### Remove reflectivity from phase change at facets ###
+    Lm[0] = lam0_m[i]/(4*n_l)                   
+    Lm[-1] = lam0_m[i]/(4*n_r)             
+    print(Lm)
     # Homogeneous gap medium parameters
     Qh = np.array([[0, 1], [-1,  0]])
     Omh = kz*I*1j                     # Omega
@@ -233,7 +240,7 @@ for i in range(len(lam0_m)):
 fig, ax1 = plt.subplots()
 
 ax2 = ax1.twinx()
-ax1.plot(lam0_nm, Tx, 'b-')
+ax1.plot(lam0_nm, Rx, 'g-')
 ax2.plot(lam0_nm, Tx, 'b-')
 
 ax1.set_xlabel('WL (nm)')
