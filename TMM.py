@@ -7,53 +7,55 @@ Updated to Python and applied to repeating laser Bragg grating by Niall Boohan [
 NOTES:
 -TE plane wave assumed no kx or ky components ###
 '''
-
+##############################################################################
+# Dashboard
+##############################################################################
+### Import libraries ###
 import scipy.linalg as la
 import numpy as np 
 import matplotlib.pyplot as plt
 from scipy.linalg import norm
 
-##############################################################################
-# Dashboard
-##############################################################################
+### Output arrays ###
 Tx = []
 Rx = []
 Zx = []
 
 ### Device parameters ###
-lambda_0 = 1.5514510248727902   # Selected wavelength (um)
+#lambda_0 =  1.5006             # Selected wavelength (um), Not nessesary 
 n_rid = 3.2                     # Refractive index ridge
-n_del = 0.005                    # Reflective index step
+n_del = 0.005                   # Reflective index step
 n_def = n_rid-n_del             # Refractive index etched defect
 u_rid = 1                       # Magnetic perm layer 1
 u_def = 1                       # Magnetic perm layer 2
-WL_start = 1540                 # Start WL (nm)
-WL_stop  = 1560                 # Stop WL (nm)
-sw =  0.12125483598388827#lambda_0/(n_def*4)#1.1                        #lambda_0/(4*n_def)
+WL_start = 1520                 # Start WL (nm)
+WL_stop  = 1580                 # Stop WL (nm)
+sw =0.1212                      # Slot width (um) lambda_0/(n_def*4)#1.1   
 cl = 400                        # Cavity length
-r_l = 0.524                     # Left facet reflectivity
-r_r = 0.671                     # Right facet reflectivity
+r_l = 0.5234                    # Left facet reflectivity
+r_r = 0.5234#0.671              # Right facet reflectivity
 
 ### Calc to turn reflectivites to n ###
 n_l = (n_rid*(1-r_l**2))/(1+r_l**2) 
 n_r = (n_rid*(1-r_r**2))/(1+r_r**2)
 
-
-print(np.sqrt((n_rid-n_r)/(n_rid+n_r)))
-
 ### Load slot positions from external calculation file ###
-L = np.load('Pslot.npy') 
+L = np.load('Pslot.npy')
 Lr = [L[i]-L[i-1]-sw/2 for i in range(1, len(L))]
 Lr.insert(0 , L[0]-sw/2)
 Ls = [sw for i in range(len(L))]
 Lm = [None]*(len(Lr)+len(Ls))
 Lm[1::2] = Ls
 Lm[::2] = Lr
+##############################################################################
+##############################################################################
+##############################################################################
+
+
 
 ##############################################################################
-# Preliminary calculations
+# Cavity calculations
 ##############################################################################
-
 ### Applying calculation matrices ###
 I = np.identity(2)                                  # Creating identity matrix
 lam0_nm  = np.linspace(WL_start, WL_stop, 1000)     # Free space wavelength 
@@ -80,11 +82,10 @@ r_E = np.array([n_r**2])
 r_H = np.array([1])                             
 
 ### Insert left & right facets & end section of laser ###
-#Lm.insert(0,lambda_0/(4*n_l))             
 Lm.insert(0,0)
 Lm.append(cl-L[-1]-sw/2)
 Lm.append(0)
-#Lm.append(lambda_0/(4*n_r))
+Lm = [i*1e-6 for i in Lm]           # Convert lengths to meters
 
 ### Append facets & laser end section onto dielectric stack ###
 # Laser end section
@@ -96,27 +97,27 @@ UR = np.append(UR, r_H)
 # Left
 ER = np.insert(ER, 0, l_E)
 UR = np.insert(UR, 0, l_H)
-
+print(ER)
 
 ### Generate input & output boudaries for laser [set to inf] ###
-erl = 1.0               # Left laser input
+erl = 1.0                           # Left laser input
 url = 1.0
-err = 1.0               # Right laser output
+err = 1.0                           # Right laser output
 urr = 1.0
 ni  = np.sqrt(erl)                  # Refrctive index of incidence media
 
-#print(Lm)
-print(ER)
-Lm = [i*1e-6 for i in Lm]           # Convert lengths to meters
 ### Source ###
 pte      = 1/np.sqrt(2)
 ptm      = pte*1j
+##############################################################################
+##############################################################################
+##############################################################################
+
 
 
 ##############################################################################
 # Combining matrices function
 ##############################################################################
-
 ### Redheffer matrix combination routine ###
 def redhefferstar(SA11, SA12, SA21, SA22, SB11, SB12, SB21, SB22):
     Num = len(SA11)
@@ -128,12 +129,15 @@ def redhefferstar(SA11, SA12, SA21, SA22, SB11, SB12, SB21, SB22):
     SAB21 = np.dot(FA, SA21)
     SAB22 = SB22 + np.linalg.multi_dot([FA, SA22, SB12])
     return SAB11, SAB12, SAB21, SAB22 
+##############################################################################
+##############################################################################
+##############################################################################
+
 
 
 ##############################################################################
 # TMM calculation section
 ##############################################################################
-
 ### Run code for range of wavelengths ###
 for i in range(len(lam0_m)):
    
@@ -230,12 +234,15 @@ for i in range(len(lam0_m)):
     Rx.append(abs(R))
     Z = R+T
     Zx.append(Z)
+##############################################################################
+##############################################################################
+##############################################################################
+
+
 
 ##############################################################################
 # Visualisation
 ##############################################################################
-
-
 ### Plotting ###
 fig, ax1 = plt.subplots()
 
@@ -252,43 +259,6 @@ ax2.set_ylabel('Trans', color='b')
 ax2.set_ylim(0, 1)
 ax2.tick_params(axis='y', colors='b')
 plt.show()
-### Calculate matrices of layers of Bragg grating of inputs ###
-
-#Q   = (1/UR[j]) * np.array([[0, UR[j]*ER[j]], [-1*(UR[j]*ER[j]), 0]])
-# C   = np.linalg.multi_dot([X, B, np.linalg.inv(A),X, B])
-#D   = np.linalg.multi_dot([X, np.matmul(B, np.linalg.inv(A)), X, B])
-#aTM  = np.array([1, 0,  0]) 
-# Pr   = 1/erl * np.array([[0, url*erl], [-url*erl, 0]]) 
-#Qr   = 1/url * np.array([[0, url*erl], [-1*(url*erl), 0]]) 
-#E_perm = np.array([n_rid**2, n_def**2])
-#H_perm = np.array([u_rid, u_def])
-#ER = np.tile(E_perm, len(Lm)-1)                     # Array of permittivities in each layer  
-#UR = np.tile(H_perm, len(Lm)-1)                     # Array of permeabilities in each layer
-#ER = np.insert(ER, 0, n_ref_l**2)           
-#UR = np.insert(UR, 0, u**2)           
-'''
-print(enumerate(Lm))
-
-E_1 = [n_rid**2 for i in range(len(Lm)-1) if Lm.index(Lm[i])%2 !=0] 
-E_2 = [n_def**2 for i in range(len(Lm)-1) if Lm.index(Lm[i])%2 == 0]
-
-ER = [None]*(len(Ll)+len(Lr))
-ER[::2] = E_1
-ER[1::2] = E_2
-print(len(Lm))
-print(len(ER))
-'''
-'''
-for i in range(len(L)):
-    if enumerate(L[i])% == 0:
-        L
-'''
-'''
-S11 = np.dot(np.linalg.inv(A - C), np.linalg.multi_dot([X, B, np.linalg.inv(A), X, A]) - B)
-S22 = S11
-S12 = np.dot(np.dot(np.linalg.inv(A - D), X), A - np.linalg.multi_dot([B, np.linalg.inv(A), B]))
-S21 = S12
-'''
-#for i in range(1,len(Lm)):
-#    diff=Lm[i]-Lm[i-1]
-#    print(diff)
+##############################################################################
+##############################################################################
+##############################################################################
